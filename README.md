@@ -1,133 +1,164 @@
-# Background Remover Service
+# 🖼️ Background Remover Service
 
-A complete background removal service using Flask + rembg library, deployable to Render.com with a frontend that can be hosted on any web hosting service.
+A production-ready **AI background removal API** — upload an image, get a clean cut-out back in seconds. Built with **Flask** + **rembg** (U²-Net under the hood), Dockerized, and deployed on Render with a frontend that can live on any host.
 
-## Architecture
+<p align="left">
+  <img src="https://img.shields.io/badge/Python-3.11-3776AB?style=flat-square&logo=python&logoColor=white" />
+  <img src="https://img.shields.io/badge/Flask-3.0-000000?style=flat-square&logo=flask&logoColor=white" />
+  <img src="https://img.shields.io/badge/rembg-2.0-FF6F00?style=flat-square" />
+  <img src="https://img.shields.io/badge/Docker-ready-2496ED?style=flat-square&logo=docker&logoColor=white" />
+  <img src="https://img.shields.io/badge/Deploy-Render-46E3B7?style=flat-square&logo=render&logoColor=black" />
+</p>
 
-- **Frontend**: HTML/CSS/JavaScript (can be hosted on GoDaddy or any web hosting)
-- **Backend**: Flask API with rembg library (deployed on Render.com)
-- **Communication**: REST API with base64 encoded images
+---
 
-## Deployment Instructions
+## ✨ Features
 
-### Python Version Configuration
+- 🧠 **AI-powered** subject detection and background removal (no green screen needed)
+- 🔌 **Simple REST API** — send a base64 image, receive a base64 PNG with transparency
+- 🌐 **CORS-enabled** — call it from any frontend, any host
+- 🐳 **Docker support** — reproducible builds, no "works on my machine"
+- ⚡ **Production server** — Gunicorn with a tuned timeout for heavy inference
+- 📦 **Size-guarded** — request payloads capped to keep the service responsive
 
-Render.com uses Python 3.13 by default, but rembg works best with Python 3.11. To specify the Python version:
+---
 
-### Method 1: Using runtime.txt (Recommended)
-Create a `runtime.txt` file in your project root with:
-\`\`\`
-python-3.11.7
-\`\`\`
+## 🏗️ Architecture
 
-### Method 2: Using Environment Variable
-In your Render.com service settings, add an environment variable:
-- Key: `PYTHON_VERSION`
-- Value: `3.11.7`
+```
+┌──────────────────┐   base64 image    ┌──────────────────────┐
+│   Frontend       │ ────────────────► │   Flask API          │
+│  (any host)      │                   │   + rembg (ONNX)     │
+│                  │ ◄──────────────── │   Gunicorn           │
+└──────────────────┘  transparent PNG  └──────────────────────┘
+                                              │
+                                        Docker / Render
+```
 
-### Updated Deployment Steps for Render.com:
+The frontend and backend are fully decoupled — you can host the UI on GoDaddy, Cloudflare Pages, or serve it straight from the API.
 
-1. Create a new account on [Render.com](https://render.com)
-2. Connect your GitHub repository
-3. Create a new "Web Service"
-4. Configure the service:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:app`
-   - **Environment**: Python 3 (will use runtime.txt for version)
-5. Make sure `runtime.txt` is in your repository root
-6. Deploy and note your service URL
+---
 
-If you're still having issues, you can also try these alternative approaches:
+## 🚀 Quick Start
 
-### Alternative: Use Docker Deployment
-If the Python version issues persist, you can use Docker deployment on Render:
-1. Select "Docker" as your environment
-2. Use the provided Dockerfile
-3. The Dockerfile specifies Python 3.9 which is fully compatible
+### Local
 
-### 1. Deploy Backend to Render.com
+```bash
+git clone https://github.com/vinaynayak2007/background-remover.git
+cd background-remover
 
-1. Create a new account on [Render.com](https://render.com)
-2. Connect your GitHub repository
-3. Create a new "Web Service"
-4. Configure the service:
-   - **Build Command**: `pip install -r requirements.txt`
-   - **Start Command**: `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:app`
-   - **Environment**: Python 3
-5. Deploy and note your service URL (e.g., `https://your-app-name.onrender.com`)
+python -m venv .venv
+source .venv/bin/activate        # Windows: .venv\Scripts\activate
 
-### 2. Deploy Frontend to GoDaddy
+pip install -r requirements.txt
+python app.py
+```
 
-1. Update the `API_BASE_URL` in `frontend/index.html` with your Render.com URL
-2. Upload the `frontend/index.html` file to your GoDaddy hosting
-3. Access your website
+The API starts on `http://localhost:10000` (override with the `PORT` env var).
 
-## Features
+### Docker
 
-- ✅ Drag & drop image upload
-- ✅ Multiple image format support (JPG, PNG, WEBP)
-- ✅ Real-time processing with loading indicators
-- ✅ Side-by-side comparison view
-- ✅ Download processed images
-- ✅ Mobile responsive design
-- ✅ Error handling and validation
-- ✅ CORS enabled for cross-origin requests
+```bash
+docker build -t background-remover .
+docker run -p 10000:10000 -e PORT=10000 background-remover
+```
 
-## API Endpoints
+---
 
-### GET /
-Health check endpoint
+## 📡 API
 
-### POST /remove-background
-Remove background from image
+### `GET /` — Health check
 
-**Request Body:**
-\`\`\`json
+```json
+{ "status": "ok" }
+```
+
+### `POST /remove` — Remove background
+
+**Request**
+
+```json
 {
-  "image": "base64_encoded_image_data"
+  "image": "<base64-encoded-image-string>"
 }
-\`\`\`
+```
 
-**Response:**
-\`\`\`json
+**Response**
+
+```json
 {
   "success": true,
-  "image": "data:image/png;base64,processed_image_data",
-  "message": "Background removed successfully"
+  "image": "<base64-encoded-png-with-transparency>"
 }
-\`\`\`
+```
 
-## Local Development
+**Example**
 
-1. Install dependencies:
-\`\`\`bash
-pip install -r requirements.txt
-\`\`\`
+```bash
+curl -X POST http://localhost:10000/remove \
+  -H "Content-Type: application/json" \
+  -d "{\"image\": \"$(base64 -w0 photo.jpg)\"}"
+```
 
-2. Run the Flask app:
-\`\`\`bash
-python app.py
-\`\`\`
+```javascript
+const res = await fetch("https://your-service.onrender.com/remove", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ image: base64String }),
+});
+const { image } = await res.json();
+document.querySelector("img").src = `data:image/png;base64,${image}`;
+```
 
-3. Open `frontend/index.html` in your browser and update the API_BASE_URL to `http://localhost:5000`
+---
 
-## Limitations on Render.com Free Tier
+## ☁️ Deployment
 
-- Service may sleep after 15 minutes of inactivity
-- 512MB RAM limit
-- 750 hours/month usage limit
-- Processing time may be slower due to resource constraints
+### Render (recommended)
 
-## Troubleshooting
+| Setting | Value |
+| :--- | :--- |
+| Environment | `Python 3` (or `Docker`) |
+| Build Command | `pip install -r requirements.txt` |
+| Start Command | `gunicorn --bind 0.0.0.0:$PORT --workers 1 --timeout 120 app:app` |
+| Python Version | `3.11.7` (pinned via `runtime.txt`) |
 
-1. **CORS Issues**: Make sure flask-cors is installed and configured
-2. **Memory Issues**: Large images may cause memory errors on free tier
-3. **Timeout Issues**: Increase gunicorn timeout for large images
-4. **Service Sleeping**: First request after inactivity may take longer
+> **Note:** `rembg` is happiest on Python 3.11. Newer Python versions can break the ONNX runtime — `runtime.txt` pins this for you. If the build still misbehaves, deploy the Docker image instead.
 
-## Security Considerations
+---
 
-- File size validation (10MB limit)
-- File type validation
-- Error handling for malformed requests
-- No file storage (images processed in memory)
+## 📁 Project Structure
+
+```
+background-remover/
+├── app.py                 # Flask API + rembg inference
+├── server.py              # Standalone server entrypoint
+├── wsgi.py                # WSGI entrypoint for Gunicorn
+├── gunicorn.conf.py       # Worker/timeout tuning
+├── Dockerfile             # Container build
+├── requirements.txt       # Pinned dependencies
+├── runtime.txt            # Python version pin
+├── render.yaml            # Render blueprint
+└── Procfile               # Process definition
+```
+
+---
+
+## 🧯 Troubleshooting
+
+| Problem | Fix |
+| :--- | :--- |
+| Port binding error on deploy | Bind to `0.0.0.0`, not `127.0.0.1` |
+| Build fails on rembg/onnxruntime | Confirm Python 3.11 via `runtime.txt`, or use Docker |
+| Request times out | First inference downloads model weights (~176 MB) — warm it up, or raise Gunicorn `--timeout` |
+| `413 Payload Too Large` | Images are capped at 3 MB; compress before sending |
+
+---
+
+## 📄 License
+
+MIT — use it, fork it, ship it.
+
+---
+
+<p align="center"><sub>Built by <a href="https://github.com/vinaynayak2007">Vinay N</a> · <a href="https://vinunayak.pages.dev">vinunayak.pages.dev</a></sub></p>
